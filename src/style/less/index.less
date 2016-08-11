@@ -1,0 +1,63 @@
+html, body, * {
+    margin: 0;
+    padding: 0;
+}
+body {
+    font-family: hiragino sans GB, "Helvetica", Microsoft YaHei, sans-serif;
+}
+.demo-group {
+    padding: 20px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+
+    .group-title {
+        font-size: 16px;
+        color: #666;
+    }
+    .group-content {
+        min-height: 150px;
+    }
+}
+.demo-box {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: #39c;
+    box-sizing: border-box;
+    color: #fff;
+    font-size: 12px;
+    padding: 10px;
+
+    .handle {
+        position: absolute;
+        top: 1px;
+        left: 0;
+        height: 6px;
+        line-height: 6px;
+        overflow: hidden;
+        width: 100%;
+        text-align: center;
+        font-size: 10px;
+        color: #fff;
+        cursor: move;
+    }
+    .resize-handle {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        cursor: nwse-resize;
+    }
+}
+.dg-bound {
+    margin: 0 auto;
+    margin-bottom: 20px;
+    width: 800px;
+    height: 400px;
+    border: 1px solid #ddd;
+}
+li {
+    margin-bottom: 20px;
+}
+.active {
+    color: #bb1111;
+}
