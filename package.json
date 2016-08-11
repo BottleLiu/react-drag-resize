@@ -7,8 +7,8 @@
     "start": "gulp",
     "eslint": "node_modules/eslint/bin/eslint.js -c .eslintrc.json --ignore-path .eslintignore src/**/*.js"
   },
-  "author": "liuping02@meituan.com",
-  "license": "ISC",
+  "author": "wwwliuping@126.com",
+  "license": "MIT",
   "dependencies": {
     "gulp-less": "3.0.3",
     "less-plugin-autoprefix": "1.5.1",
