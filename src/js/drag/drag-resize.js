@@ -84,6 +84,8 @@ class DragResize extends Component {
         this.winSize = null;
         this.scrollCache = null;
         this.needRefreshInitInfo = false;
+        // 用于手柄的占用冲突处理
+        this.selfOccupied = false;
     };
 
     state = {
@@ -259,7 +261,15 @@ class DragResize extends Component {
     parseHandleUnit = (handle) => {
         let parsedHandle;
         if (!handle) {
+            return null;
+        }
+        else if (handle === 'self') {
+            // 同是self时，仅被占用一次
+            if (this.selfOccupied) {
+                return null;
+            }
             parsedHandle = this.node;
+            this.selfOccupied = true;
         }
         else if (isNode(handle)) {
             parsedHandle = handle;
