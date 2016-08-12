@@ -111,6 +111,8 @@ class DragResize extends Component {
         beforeEnd: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
         // 是否开启placeholder模式，该模式下，拖拽过程中使用的是一个辅助块，结束之后才更新主体位置
         enablePlaceholder: PropTypes.bool,
+        // 进行时，不在body上添加辅助的class
+        noGlobalClass: PropTypes.bool,
         // position为fixed时自动限定不超出窗口
         betterFixed: PropTypes.bool,
         // 以下三个分别为拖拽开始，拖拽中，拖拽结束的回调，接收三个参数：event, 当前位置参数，在页面上的位置
@@ -705,7 +707,8 @@ class DragResize extends Component {
     };
 
     handleStart = (e, act, params) => {
-        utils.addClass(this.handle.drag.ownerDocument.body, styles.active[act]);
+        !this.props.noGlobalClass &&
+            utils.addClass(this.handle[act].ownerDocument.body, styles.active[act]);
         this.props.onStart(e, act, params);
     };
 
@@ -714,7 +717,8 @@ class DragResize extends Component {
     };
 
     handleEnd = (e, act, params) => {
-        utils.removeClass(this.handle.drag.ownerDocument.body, styles.active[act]);
+        !this.props.noGlobalClass &&
+            utils.removeClass(this.handle[act].ownerDocument.body, styles.active[act]);
         this.currentInfoCache = {...this.currentInfo};
         this.props.onEnd(e, act, params);
     };
