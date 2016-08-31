@@ -1,38 +1,10 @@
-const NUM_REG = /^\-?(\d)*(\.(\d)*)?$/;
 const utils = {
-    isNumeric (val) {
-        try {
-            val = val.toString();
-            return NUM_REG.test(val);
-        }
-        catch (e) {
-            return false;
-        }
-    },
-    // 转化为数字形式，与getNum的区别在于其转化的是数字形式的字符串
-    transToNum (val) {
-        if (utils.isNumeric(val)) {
-            return parseFloat(val, 10);
-        }
-        return 0;
-    },
-    // 获取输入的数字部分
     getNum (val) {
         let tmpVal = parseFloat(val, 10);
         if (!isNaN(tmpVal)) {
             return tmpVal;
         }
         return 0;
-    },
-    find (selector, range) {
-        if (!utils.isNode(range)) {
-            range = document.documentElement || document.body;
-        }
-        let result = [];
-        if (range.querySelectorAll) {
-            result = range.querySelectorAll(selector);
-        }
-        return Array.prototype.slice.call(result, 0);
     },
     getAvailableSize (nd) {
         let root = (nd ? nd.ownerDocument : document)['body'];
@@ -58,11 +30,9 @@ const utils = {
         }
         return styleName ? style[styleName] : style;
     },
-
     isNode (nd) {
         return !!(nd && nd.nodeType === 1);
     },
-
     merge (rootObj = {}, newObj = {}) {
         for (let i in newObj) {
             if (newObj.hasOwnProperty(i)) {
@@ -71,21 +41,6 @@ const utils = {
         }
 
         return rootObj;
-    },
-
-    // 以源的key为依据，进行合并
-    smartyMerge (rootObj, newObj = {}) {
-        let tempObj = {};
-        for (let i in rootObj) {
-            if (rootObj.hasOwnProperty(i)) {
-                tempObj[i] = rootObj[i];
-
-                if (i in newObj) {
-                    tempObj[i] = newObj[i];
-                }
-            }
-        }
-        return tempObj;
     },
 
     isArray (item) {
@@ -98,18 +53,6 @@ const utils = {
 
     isWindow (item) {
         return !(item && (item.constructor.toString().indexOf('Window') !== -1));
-    },
-
-    unikey (len = 16) {
-        let result = '';
-        for (; result.length < len; result += Math.random().toString(36).substr(2));
-        return result.substr(0, len);
-    },
-
-    keyCreator (prefix = 'd') {
-        let keyArr = this.unikey(9).match(/.{3}/g);
-        keyArr.unshift(prefix);
-        return keyArr.join('-');
     },
 
     getEvtPos (e) {
@@ -219,32 +162,16 @@ const utils = {
         return nd;
     },
 
-    fixGridVal (val, grid, range = [-Infinity, Infinity], floorFirst = true) {
-        let step = val / grid;
-        let valFloorStep = Math.floor(step);
-        let valCeilStep = Math.ceil(step);
-        let floorVal = valFloorStep * grid;
-        let ceilVal = valCeilStep * grid;
-        let fixedVal;
-        if (floorVal > range[1]) {
-            fixedVal = Math.floor(range[1] / grid) * grid;
-        }
-        else if (ceilVal < range[0]) {
-            fixedVal = Math.ceil(range[0] / grid) * grid;
-        }
-        else {
-            if (floorVal < range[0]) {
-                fixedVal = ceilVal;
-            }
-            else if (ceilVal > range[1]) {
-                fixedVal = floorVal;
-            }
-            else {
-                fixedVal = floorFirst ? floorVal : ceilVal;
-            }
-        }
+    unikey (len = 16) {
+        let result = '';
+        for (; result.length < len; result += Math.random().toString(36).substr(2));
+        return result.substr(0, len);
+    },
 
-        return fixedVal;
+    keyCreator (prefix = 'd') {
+        let keyArr = this.unikey(9).match(/.{1,3}/g);
+        keyArr.unshift(prefix);
+        return keyArr.join('-');
     }
 };
 

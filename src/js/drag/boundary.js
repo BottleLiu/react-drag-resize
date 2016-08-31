@@ -6,7 +6,7 @@ import utils from './utils';
 const getStyle = utils.getStyle;
 
 // 计算可使用的区域
-const calcAvailableZone = (nd, relativeParentInfo) => {
+const calcAvailableZone = (nd, relativeParentInfo, wrapperPosVal) => {
     let ndStyle;
     let ndInfo;
     if (utils.isNode(nd)) {
@@ -35,15 +35,33 @@ const calcAvailableZone = (nd, relativeParentInfo) => {
     else {
         return false;
     }
-    let bpL = parseFloat(ndStyle.borderLeftWidth, 10) + parseFloat(ndStyle.paddingLeft, 10);
-    let bpR = parseFloat(ndStyle.borderRightWidth, 10) + parseFloat(ndStyle.paddingRight, 10);
-    let startX = ndInfo.left - relativeParentInfo.left + bpL;
-    let endX = startX + ndInfo.width - bpL - bpR;
+    // 此处由于ndInfo是基于初始时位置计算的，因此直接使用即可
+    let bdL = parseFloat(ndStyle.borderLeftWidth, 10);
+    let bdR = parseFloat(ndStyle.borderRightWidth, 10);
+    let bdT = parseFloat(ndStyle.borderTopWidth, 10);
+    let bdB = parseFloat(ndStyle.borderBottomWidth, 10);
+    let bpL = bdL + parseFloat(ndStyle.paddingLeft, 10);
+    let bpR = bdR + parseFloat(ndStyle.paddingRight, 10);
+    let bpT = bdT + parseFloat(ndStyle.paddingTop, 10);
+    let bpB = bdB + parseFloat(ndStyle.paddingBottom, 10);
 
-    let bpT = parseFloat(ndStyle.borderTopWidth, 10) + parseFloat(ndStyle.paddingTop, 10);
-    let bpB = parseFloat(ndStyle.borderBottomWidth, 10) + parseFloat(ndStyle.paddingBottom, 10);
-    let startY = ndInfo.top - relativeParentInfo.top + bpT;
-    let endY = startY + ndInfo.height - bpT - bpB;
+    let startX = 0;
+    let endX = 0;
+    let startY = 0;
+    let endY = 0;
+    // 相对参数的边界条件特殊处理，其元素定位与内边距有关
+    if (wrapperPosVal === 'relative') {
+        startX = ndInfo.left - relativeParentInfo.left + bdL;
+        endX = startX + ndInfo.width - bpL - bpR;
+        startY = ndInfo.top - relativeParentInfo.top + bdT;
+        endY = startY + ndInfo.height - bpT - bpB;
+    }
+    else {
+        startX = ndInfo.left - relativeParentInfo.left + bpL;
+        endX = startX + ndInfo.width - bpL - bpR;
+        startY = ndInfo.top - relativeParentInfo.top + bpT;
+        endY = startY + ndInfo.height - bpT - bpB;
+    }
     let range = {
         x: [startX, endX],
         y: [startY, endY]

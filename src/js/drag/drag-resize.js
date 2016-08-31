@@ -1,23 +1,19 @@
 /**
  * drag-resize基础单元
  */
+import React, {Component, PropTypes} from 'react';
 import utils from './utils';
 import boundary from './boundary';
 import Placeholder from './placeholder';
-import React, {Component, PropTypes} from 'react';
+import Handler from './handler';
 
-const styles = {
-    active: {
-        drag: 'dg-active-drag',
-        resize: 'dg-active-resize'
-    }
-};
+const {DragHandler, ResizeHandler} = Handler;
 const validPositionVal = {
     relative: true,
     absolute: true,
     fixed: true
 };
-const {getStyle, isNode, find: findDom} = utils;
+const {getStyle} = utils;
 
 const infoToStyle = (currentInfo = {}, enabledMap = {}) => {
     let param = {};
@@ -54,13 +50,10 @@ class DragResize extends Component {
         // 当前信息
         this.currentInfo = {};
         this.currentInfoCache = {};
-        this.bound = null;
-        this.boundCheck = null;
         this.node = null;
         this.handle = {};
         // 父级首个相对定位的节点，在使用了绝对定位控制时使用
         this.relativeParentInfo = null;
-        this.id = utils.keyCreator();
         // 冻结
         this.frozenX = false;
         this.frozenY = false;
@@ -86,6 +79,7 @@ class DragResize extends Component {
         this.needRefreshInitInfo = false;
         // 用于手柄的占用冲突处理
         this.selfOccupied = false;
+        this.handleInstMap = {};
     };
 
     state = {
@@ -106,7 +100,8 @@ class DragResize extends Component {
         // 拖拽步进，如grid: [50, 100]表示拖拽x方向以50为步进，y方向以100为步进
         grid: PropTypes.arrayOf(PropTypes.number),
         // 冻结操作，ture表示都冻结，x表示冻结x方向，y表示冻结y方向
-        frozen: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
+        frozen: PropTypes.oneOfType([PropTypes.bool, PropTypes.string, PropTypes.object]),
+        sizeRange: PropTypes.object,
         // 是否取消拖拽，在拖拽结束时执行，可选为true(直接返回)，function(判断后返回true时则返回)
         beforeEnd: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
         // 是否开启placeholder模式，该模式下，拖拽过程中使用的是一个辅助块，结束之后才更新主体位置
@@ -126,7 +121,7 @@ class DragResize extends Component {
         debounce: 17,
         grid: [],
         betterFixed: true,
-        enablePlaceholder: true,
+        enablePlaceholder: false,
         enabled: {drag: true, resize: true},
         onStart () {},
         onProcess () {},
@@ -147,7 +142,6 @@ class DragResize extends Component {
         });
         this.parseHandleParam();
         this.parseBound();
-        this.parseEvt();
     };
 
     componentWillUnmount () {
@@ -163,7 +157,6 @@ class DragResize extends Component {
         this.parseSizeRange(nextProps);
         this.parseHandleParam(nextProps);
         this.parseBound();
-        this.parseEvt(nextProps);
         this.parseInitStyle(nextProps, () => {
             this.initCurrentInfo(true);
         });
@@ -171,16 +164,12 @@ class DragResize extends Component {
 
     destroyEvt = () => {
         if (this.handle.drag) {
-            let dragHandler = this.handle.drag;
-            utils.removeEvent(dragHandler, 'mousedown', this.handleDragStart);
-            utils.removeEvent(dragHandler.ownerDocument, 'mousemove', this.lazyHandleDragIn);
-            utils.removeEvent(dragHandler.ownerDocument, 'mouseup', this.handleDragEnd);
+            utils.removeEvent(this.node.ownerDocument, 'mousemove', this.lazyHandleDragIn);
+            utils.removeEvent(this.node.ownerDocument, 'mouseup', this.handleDragEnd);
         }
         if (this.handle.resize) {
-            let resizeHandler = this.handle.resize;
-            utils.removeEvent(resizeHandler, 'mousedown', this.handleResizeStart);
-            utils.removeEvent(resizeHandler.ownerDocument, 'mousemove', this.lazyHandleResizeIn);
-            utils.removeEvent(resizeHandler.ownerDocument, 'mouseup', this.handleResizeEnd);
+            utils.removeEvent(this.node.ownerDocument, 'mousemove', this.lazyHandleResizeIn);
+            utils.removeEvent(this.node.ownerDocument, 'mouseup', this.handleResizeEnd);
         }
         this.ingTimer && clearTimeout(this.ingTimer);
         this.ingTimer = null;
@@ -237,6 +226,49 @@ class DragResize extends Component {
         });
     };
 
+    parseContent = (props = this.props) => {
+        this.handleInstMap = {};
+        const enabledDrag = props.enabled.drag;
+        const enabledResize = props.enabled.resize;
+        return React.Children.map(props.children, (Child) => {
+            if (!Child || !Child.type) {
+                return Child;
+            }
+            switch (Child.type) {
+                case DragHandler:
+                    if (!enabledDrag || this.handleInstMap['drag']) {
+                        return Child;
+                    }
+                    this.handleInstMap['drag'] = true;
+                    return (
+                        <div
+                            {...(Child.props || {})}
+                            ref={(nd) => {
+                                this.handle.drag = nd;
+                            }}
+                            onMouseDown={this.handleDragStart}/>
+                    );
+
+                case ResizeHandler:
+                    if (!enabledResize || this.handleInstMap['resize']) {
+                        return Child;
+                    }
+                    this.handleInstMap['resize'] = true;
+                    return (
+                        <div
+                            {...(Child.props || {})}
+                            ref={(nd) => {
+                                this.handle.resize = nd;
+                            }}
+                            onMouseDown={this.handleResizeStart}/>
+                    );
+
+                default:
+                    return Child;
+            }
+        });
+    };
+
     // style参数预处理
     parseNdStylePosition = (props = this.props) => {
         let styleOpts = props.style || {};
@@ -247,40 +279,6 @@ class DragResize extends Component {
         }
 
         return targetVal;
-    };
-
-    parseEvt = (props = this.props) => {
-        let enabledMap = props.enabled;
-        if (enabledMap.drag && !this.frozenDrag && this.handle && this.handle.drag) {
-            utils.addEvent(this.handle.drag, 'mousedown', this.handleDragStart);
-        }
-        if (enabledMap.resize && !this.frozenResize && this.handle && this.handle.resize) {
-            utils.addEvent(this.handle.resize, 'mousedown', this.handleResizeStart);
-        }
-    };
-
-    // 解析单个handle
-    parseHandleUnit = (handle) => {
-        let parsedHandle;
-        if (!handle) {
-            return null;
-        }
-        else if (handle === 'self') {
-            // 同是self时，仅被占用一次
-            if (this.selfOccupied) {
-                return null;
-            }
-            parsedHandle = this.node;
-            this.selfOccupied = true;
-        }
-        else if (isNode(handle)) {
-            parsedHandle = handle;
-        }
-        else if (typeof handle === 'string') {
-            parsedHandle = findDom(handle, this.node)[0];
-        }
-
-        return parsedHandle;
     };
 
     parseStyleParam = () => {
@@ -295,9 +293,10 @@ class DragResize extends Component {
 
     // 解析手柄参数
     parseHandleParam = (props = this.props) => {
-        let {dragHandler, resizeHandler} = props;
-        this.handle.drag = this.parseHandleUnit(dragHandler);
-        this.handle.resize = this.parseHandleUnit(resizeHandler);
+        let {dragSelf, enabled} = props;
+        if (!this.handleInstMap.drag) {
+            this.handle.drag = (dragSelf && enabled.drag) ? 'self' : null;
+        }
     };
 
     // 解析冻结参数
@@ -420,7 +419,7 @@ class DragResize extends Component {
             preResolveBound = () => {
                 let availableParam = getAvailableParam();
                 let bParams = this.boundParams = availableParam &&
-                    boundary.calcAvailableZone(availableParam, this.relativeParentInfo);
+                    boundary.calcAvailableZone(availableParam, this.relativeParentInfo, this.wrapperPositionStyle);
                 if (this.limitWin) {
                     let currentScrollPos = this.scrollCache = utils.getScrollPos();
                     this.winSize = utils.getWinSize(this.node);
@@ -538,10 +537,7 @@ class DragResize extends Component {
         if (!this.limitWin) {
             return newInfo;
         }
-        let scrollSize = utils.getScrollPos();
         let winSize = this.winSize;
-        let offsetL = scrollSize.left - this.scrollCache.left;
-        let offsetV = scrollSize.top - this.scrollCache.top;
         let right = newInfo.left + newInfo.width;
         let bottom = newInfo.top + newInfo.height;
         if (right > winSize.width) {
@@ -671,15 +667,13 @@ class DragResize extends Component {
     // 获取最近一个relative的父级节点(自身为relative时，将基于父级节点)
     getRelativeParentInfo = () => {
         let nodePosition = utils.getStyle(this.node, 'position');
-        let parentNd = this.node.parentNode;
+        let parentNd = this.node;
         // (自身为relative时，将基于父级节点)
         if (nodePosition !== 'relative') {
-            let ndPostion = utils.getStyle(parentNd, 'position');
-            let body = document.body;
-            while (parentNd !== body && ndPostion !== 'relative') {
-                parentNd = parentNd.parentNode;
-                ndPostion = utils.getStyle(parentNd, 'position');
-            }
+            parentNd = this.node.offsetParent;
+        }
+        else {
+            parentNd = this.node.parentNode;
         }
         let ndStyle = getStyle(parentNd);
         let ndInfo = utils.getDomAbsoluteInfo(parentNd);
@@ -690,14 +684,11 @@ class DragResize extends Component {
     };
 
     freshParam = (props = this.props) => {
-        let state = this.state;
         let {currentInfo} = this;
         this.stableSoureInfo = utils.getDomAbsoluteInfo(this.node);
         this.stableSoureInfo.left -= currentInfo.left;
         this.stableSoureInfo.top -= currentInfo.top;
-        if (!props.useTranslate) {
-            this.relativeParentInfo = this.getRelativeParentInfo();
-        }
+        this.relativeParentInfo = this.getRelativeParentInfo();
         if (this.wrapperPositionStyle === 'fixed' && props.betterFixed) {
             this.limitWin = true;
         }
@@ -708,7 +699,7 @@ class DragResize extends Component {
 
     handleStart = (e, act, params) => {
         !this.props.noGlobalClass &&
-            utils.addClass(this.handle[act].ownerDocument.body, styles.active[act]);
+            utils.addClass(this.node.ownerDocument.body, `dg-active-${act}`);
         this.props.onStart(e, act, params);
     };
 
@@ -718,7 +709,7 @@ class DragResize extends Component {
 
     handleEnd = (e, act, params) => {
         !this.props.noGlobalClass &&
-            utils.removeClass(this.handle[act].ownerDocument.body, styles.active[act]);
+            utils.removeClass(this.node.ownerDocument.body, `dg-active-${act}`);
         this.currentInfoCache = {...this.currentInfo};
         this.props.onEnd(e, act, params);
     };
@@ -726,6 +717,11 @@ class DragResize extends Component {
     handleDragStart = (e) => {
         let props = this.props;
         if (props.frozen === true) {
+            return;
+        }
+        let el = e.target;
+        // 两操作冲突
+        if (this.handle.resize && this.handle.resize.contains(el)) {
             return;
         }
 
@@ -740,8 +736,8 @@ class DragResize extends Component {
             y: evtPos.y - stableSoureInfo.top - currentInfo.top
         };
 
-        utils.addEvent(this.handle.drag.ownerDocument, 'mousemove', this.lazyHandleDragIn);
-        utils.addEvent(this.handle.drag.ownerDocument, 'mouseup', this.handleDragEnd);
+        utils.addEvent(this.node.ownerDocument, 'mousemove', this.lazyHandleDragIn);
+        utils.addEvent(this.node.ownerDocument, 'mouseup', this.handleDragEnd);
         state.status = 'active';
         state.styleParam = this.buildStyleByState(state);
         this.setState(state, () => {
@@ -783,8 +779,8 @@ class DragResize extends Component {
     };
 
     handleDragEnd = (e) => {
-        utils.removeEvent(this.handle.drag.ownerDocument, 'mousemove', this.lazyHandleDragIn);
-        utils.removeEvent(this.handle.drag.ownerDocument, 'mouseup', this.handleDragEnd);
+        utils.removeEvent(this.node.ownerDocument, 'mousemove', this.lazyHandleDragIn);
+        utils.removeEvent(this.node.ownerDocument, 'mouseup', this.handleDragEnd);
         let currentInfo = this.currentInfo;
         let beforeEnd = this.props.beforeEnd;
         let endCopyInfo = {...currentInfo};
@@ -811,6 +807,7 @@ class DragResize extends Component {
     };
 
     handleResizeStart = (e) => {
+        e.stopPropagation();
         let props = this.props;
         if (props.frozen === true) {
             return;
@@ -826,9 +823,8 @@ class DragResize extends Component {
             x: (stableSoureInfo.width + stableSoureInfo.left) - evtPos.x,
             y: (stableSoureInfo.height + stableSoureInfo.top) - evtPos.y
         };
-        let resizeHandler = this.handle.resize;
-        utils.addEvent(resizeHandler.ownerDocument, 'mousemove', this.lazyHandleResizeIn);
-        utils.addEvent(resizeHandler.ownerDocument, 'mouseup', this.handleResizeEnd);
+        utils.addEvent(this.node.ownerDocument, 'mousemove', this.lazyHandleResizeIn);
+        utils.addEvent(this.node.ownerDocument, 'mouseup', this.handleResizeEnd);
         state.status = 'active';
         state.styleParam = this.buildStyleByState(state);
         this.setState(state, () => {
@@ -871,9 +867,8 @@ class DragResize extends Component {
     };
 
     handleResizeEnd = (e) => {
-        let resizeHandler = this.handle.resize;
-        utils.removeEvent(resizeHandler.ownerDocument, 'mousemove', this.lazyHandleResizeIn);
-        utils.removeEvent(resizeHandler.ownerDocument, 'mouseup', this.handleResizeEnd);
+        utils.removeEvent(this.node.ownerDocument, 'mousemove', this.lazyHandleResizeIn);
+        utils.removeEvent(this.node.ownerDocument, 'mouseup', this.handleResizeEnd);
         let currentInfo = this.currentInfo;
         let endCopyInfo = {...currentInfo};
         let beforeEnd = this.props.beforeEnd;
@@ -902,6 +897,12 @@ class DragResize extends Component {
     render () {
         let {styleParam, status} = this.state;
         let placeholder = false;
+        let extraProps = {};
+        // 特殊处理self
+        if (this.handle.drag === 'self') {
+            extraProps.onMouseDown = this.handleDragStart;
+        }
+        // 处理占位元素
         if (this.props.enablePlaceholder && status !== 'idle') {
             let prevStableParam = this.buildStyleByState(this.state, this.currentInfoCache);
             placeholder = (
@@ -914,12 +915,15 @@ class DragResize extends Component {
             <div
                 className="drag-unit"
                 ref={this.getWrapperNd}
-                style={styleParam}>
-                {this.props.children}
+                style={styleParam}
+                {...extraProps}>
+                {this.parseContent()}
                 {placeholder}
             </div>
         );
     };
 }
 
+DragResize.DragHandler = DragHandler;
+DragResize.ResizeHandler = ResizeHandler;
 export default DragResize;

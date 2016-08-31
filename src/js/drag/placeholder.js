@@ -3,10 +3,6 @@
  */
 import React, {Component} from 'react';
 
-const styles = {
-    placeholder: 'dg-ph'
-};
-
 class Placeholder extends Component {
     static defaultProps = {
         left: 0,
@@ -29,7 +25,7 @@ class Placeholder extends Component {
     render () {
         let style = this.buildStyle();
         return (
-            <div className={styles.placeholder} style={style}></div>
+            <div className="dg-ph" style={style}></div>
         );
     };
 }

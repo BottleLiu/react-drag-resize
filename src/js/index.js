@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import DragResize from './drag/drag-resize';
+const {DragHandler, ResizeHandler} = DragResize;
 
 const debugFlag = false;
 const handleStart = (e, act, param) => {
@@ -26,17 +27,14 @@ const Root = (
                     onProcess={handleProcess}
                     onEnd={handleEnd}
                     beforeEnd={handleBeforeEnd}
-                    dragHandler=".handle"
-                    resizeHandler=".resize-handle"
-                    enablePlaceholder={true}
                     sizeRange={{w: [100], h: [100]}}
                     grid={[50, 50]}
                     style={{height: '100px', width: '100px'}}>
                     <div className="demo-box">
-                        <div className="handle">|||</div>
-                        <div className="resize-handle">⇲</div>
                         Box 1
                     </div>
+                    <DragHandler className="handle">|||</DragHandler>
+                    <ResizeHandler className="resize-handle">⇲</ResizeHandler>
                 </DragResize>
             </div>
         </div>
@@ -48,16 +46,14 @@ const Root = (
                     onStart={handleStart}
                     onProcess={handleProcess}
                     onEnd={handleEnd}
-                    dragHandler=".handle"
-                    resizeHandler=".resize-handle"
                     enablePlaceholder={true}
                     sizeRange={{w: [100], h: [100]}}
                     style={{height: '100px', width: '100px'}}>
                     <div className="demo-box">
-                        <div className="handle">|||</div>
-                        <div className="resize-handle">⇲</div>
                         Box 2
                     </div>
+                    <DragHandler className="handle">|||</DragHandler>
+                    <ResizeHandler className="resize-handle">⇲</ResizeHandler>
                 </DragResize>
             </div>
         </div>
@@ -66,39 +62,31 @@ const Root = (
             <div className="dg-bound">
                 <DragResize
                     bound="parent"
-                    enabled={{drag: true}}
                     onStart={handleStart}
                     onProcess={handleProcess}
                     onEnd={handleEnd}
-                    dragHandler=".handle"
-                    resizeHandler=".resize-handle"
                     enablePlaceholder={true}
                     sizeRange={{w: [100], h: [100]}}
                     style={{height: '100px', width: '100px'}}>
                     <div className="demo-box">
-                        <div className="handle">|||</div>
-                        <div className="resize-handle">⇲</div>
                         Only Drag
                     </div>
+                    <DragHandler className="handle">|||</DragHandler>
                 </DragResize>
             </div>
             <div className="dg-bound">
                 <DragResize
                     bound="parent"
-                    enabled={{resize: true}}
                     onStart={handleStart}
                     onProcess={handleProcess}
                     onEnd={handleEnd}
-                    dragHandler=".handle"
-                    resizeHandler=".resize-handle"
                     enablePlaceholder={true}
                     sizeRange={{w: [100], h: [100]}}
                     style={{height: '100px', width: '100px'}}>
                     <div className="demo-box">
-                        <div className="handle">|||</div>
-                        <div className="resize-handle">⇲</div>
                         Only Resize
                     </div>
+                    <ResizeHandler className="resize-handle">⇲</ResizeHandler>
                 </DragResize>
             </div>
         </div>
