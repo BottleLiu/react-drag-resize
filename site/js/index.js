@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import DragResize from './drag/drag-resize';
+import DragResize from 'drag-resize';
 const {DragHandler, ResizeHandler} = DragResize;
 
 const debugFlag = false;
